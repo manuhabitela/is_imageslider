@@ -53,8 +53,8 @@ class Is_ImageSlider extends Module implements WidgetInterface
     {
         $this->name = 'is_imageslider';
         $this->tab = 'front_office_features';
-        $this->version = '1.2.0';
-        $this->author = 'Prestashop - modified by Igor Stępień';
+        $this->version = '1.3.0';
+        $this->author = 'Prestashop - modified by Igor Stępień and Emmanuel Pelletier';
         $this->need_instance = 0;
         $this->bootstrap = true;
         $this->secure_key = Tools::encrypt($this->name);
@@ -62,7 +62,7 @@ class Is_ImageSlider extends Module implements WidgetInterface
         parent::__construct();
 
         $this->displayName = $this->l('Image slider');
-        $this->description = $this->l('Adds an image slider to your site.');
+        $this->description = $this->l('Adds a media slider to your site.');
         $this->ps_versions_compliancy = array('min' => '1.7.4.0', 'max' => _PS_VERSION_);
 
         $this->templateFile = 'module:is_imageslider/views/templates/hook/slider.tpl';
@@ -177,6 +177,8 @@ class Is_ImageSlider extends Module implements WidgetInterface
               `url` varchar(255) NOT NULL,
               `image` varchar(255) NOT NULL,
               `image_mobile` varchar(255) NOT NULL,
+              `video` varchar(255) NOT NULL,
+              `video_mobile` varchar(255) NOT NULL,
               PRIMARY KEY (`id_ishomeslider_slides`,`id_lang`)
             ) ENGINE='._MYSQL_ENGINE_.' DEFAULT CHARSET=UTF8;
         ');
@@ -290,7 +292,7 @@ class Is_ImageSlider extends Module implements WidgetInterface
                     $errors[] = $this->getTranslator()->trans('Invalid slide ID', array(), 'Modules.Imageslider.Admin');
                 }
             }
-            /* Checks title/url/legend/description/image */
+            /* Checks title/url/legend/description/image/video */
             $languages = Language::getLanguages(false);
             foreach ($languages as $language) {
                 if (Tools::strlen(Tools::getValue('title_' . $language['id_lang'])) > 255) {
@@ -318,6 +320,12 @@ class Is_ImageSlider extends Module implements WidgetInterface
                     $errors[] = $this->getTranslator()->trans('Invalid filename.', array(), 'Modules.Imageslider.Admin');
                 }
                 if (Tools::getValue('image_mobile_old_' . $language['id_lang']) != null && !Validate::isFileName(Tools::getValue('image_mobile_old_' . $language['id_lang']))) {
+                    $errors[] = $this->getTranslator()->trans('Invalid filename.', array(), 'Modules.Imageslider.Admin');
+                }
+                if (Tools::getValue('video_' . $language['id_lang']) != null && !Validate::isFileName(Tools::getValue('video_' . $language['id_lang']))) {
+                    $errors[] = $this->getTranslator()->trans('Invalid filename.', array(), 'Modules.Imageslider.Admin');
+                }
+                if (Tools::getValue('video_mobile_' . $language['id_lang']) != null && !Validate::isFileName(Tools::getValue('video_mobile_' . $language['id_lang']))) {
                     $errors[] = $this->getTranslator()->trans('Invalid filename.', array(), 'Modules.Imageslider.Admin');
                 }
             }
@@ -492,6 +500,50 @@ class Is_ImageSlider extends Module implements WidgetInterface
                   }
                 }
 
+                /* Uploads video and sets slide */
+                if (isset($_FILES['video_' . $language['id_lang']]) &&
+                    isset($_FILES['video_' . $language['id_lang']]['type']) &&
+                    $_FILES['video_' . $language['id_lang']]['type'] === 'video/mp4' &&
+                    !empty($_FILES['video_' . $language['id_lang']]['tmp_name'])
+                ) {
+                    $temp_name = tempnam(_PS_TMP_IMG_DIR_, 'PS');
+                    $salt = sha1(microtime());
+                    if (!$temp_name || !move_uploaded_file($_FILES['video_' . $language['id_lang']]['tmp_name'], $temp_name)) {
+                        return false;
+                    } elseif (!file_put_contents(
+                         __DIR__ . '/images/' . $salt . '_' . $_FILES['video_' . $language['id_lang']]['name'],
+                       file_get_contents($temp_name)
+                    )) {
+                        $errors[] = $this->displayError($this->getTranslator()->trans('An error occurred during the video upload process.', [], 'Admin.Notifications.Error'));
+                    }
+                    if (file_exists($temp_name)) {
+                        @unlink($temp_name);
+                    }
+                    $slide->video[$language['id_lang']] = $salt . '_' . $_FILES['video_' . $language['id_lang']]['name'];
+                }
+
+                /* Uploads mobile video and sets slide */
+                if (isset($_FILES['video_mobile_' . $language['id_lang']]) &&
+                    isset($_FILES['video_mobile_' . $language['id_lang']]['type']) &&
+                    $_FILES['video_mobile_' . $language['id_lang']]['type'] === 'video/mp4' &&
+                    !empty($_FILES['video_mobile_' . $language['id_lang']]['tmp_name'])
+                ) {
+                    $temp_name = tempnam(_PS_TMP_IMG_DIR_, 'PS');
+                    $salt = sha1(microtime());
+                    if (!$temp_name || !move_uploaded_file($_FILES['video_mobile_' . $language['id_lang']]['tmp_name'], $temp_name)) {
+                        return false;
+                    } elseif (!file_put_contents(
+                         __DIR__ . '/images/' . $salt . '_' . $_FILES['video_mobile_' . $language['id_lang']]['name'],
+                       file_get_contents($temp_name)
+                    )) {
+                        $errors[] = $this->displayError($this->getTranslator()->trans('An error occurred during the video upload process.', [], 'Admin.Notifications.Error'));
+                    }
+                    if (file_exists($temp_name)) {
+                        @unlink($temp_name);
+                    }
+                    $slide->video_mobile[$language['id_lang']] = $salt . '_' . $_FILES['video_mobile_' . $language['id_lang']]['name'];
+                }
+
             }
 
             /* Processes if no errors  */
@@ -663,7 +715,7 @@ class Is_ImageSlider extends Module implements WidgetInterface
 
         $slides = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS('
             SELECT hs.`id_ishomeslider_slides` as id_slide, hss.`position`, hss.`active`, hssl.`title`,
-            hssl.`url`, hssl.`legend`, hssl.`description`, hssl.`image`, hssl.`image_mobile`
+            hssl.`url`, hssl.`legend`, hssl.`description`, hssl.`image`, hssl.`image_mobile`, hssl.`video`, hssl.`video_mobile`
             FROM '._DB_PREFIX_.'ishomeslider hs
             LEFT JOIN '._DB_PREFIX_.'ishomeslider_slides hss ON (hs.id_ishomeslider_slides = hss.id_ishomeslider_slides)
             LEFT JOIN '._DB_PREFIX_.'ishomeslider_slides_lang hssl ON (hss.id_ishomeslider_slides = hssl.id_ishomeslider_slides)
@@ -679,6 +731,12 @@ class Is_ImageSlider extends Module implements WidgetInterface
         foreach ($slides as &$slide) {
             $slide['image_url'] = $this->context->link->getMediaLink(_MODULE_DIR_.'is_imageslider/images/'.$slide['image']);
             $slide['image_mobile_url'] = $this->context->link->getMediaLink(_MODULE_DIR_.'is_imageslider/images/'.$slide['image_mobile']);
+            $slide['video_url'] = !empty($slide['video'])
+                ? $this->context->link->getMediaLink(_MODULE_DIR_.'is_imageslider/images/' . $slide['video'])
+                : '';
+            $slide['video_mobile_url'] = !empty($slide['video_mobile'])
+                ? $this->context->link->getMediaLink(_MODULE_DIR_.'is_imageslider/images/' . $slide['video_mobile'])
+                : '';
             $slide['url'] = $this->updateUrl($slide['url']);
         }
 
@@ -782,6 +840,20 @@ class Is_ImageSlider extends Module implements WidgetInterface
                         'required' => true,
                         'lang' => true,
                         'desc' => $this->getTranslator()->trans('Maximum image size: %s.', array(ini_get('upload_max_filesize')), 'Admin.Global')
+                    ),
+                    array(
+                        'type' => 'file_lang',
+                        'label' => $this->trans('Vidéo', array(), 'Admin.Global'),
+                        'name' => 'video',
+                        'lang' => true,
+                        'desc' => $this->trans("Taille de vidéo max : %s.", array(ini_get('upload_max_filesize')), 'Admin.Global'),
+                    ),
+                    array(
+                        'type' => 'file_lang',
+                        'label' => $this->trans('Vidéo mobile', array(), 'Admin.Global'),
+                        'name' => 'video_mobile',
+                        'lang' => true,
+                        'desc' => $this->trans("Taille de vidéo max : %s.", array(ini_get('upload_max_filesize')), 'Admin.Global'),
                     ),
                     array(
                         'type' => 'text',
@@ -1002,6 +1074,8 @@ class Is_ImageSlider extends Module implements WidgetInterface
         foreach ($languages as $lang) {
             $fields['image'][$lang['id_lang']] = Tools::getValue('image_'.(int)$lang['id_lang']);
             $fields['image_mobile'][$lang['id_lang']] = Tools::getValue('image_mobile_'.(int)$lang['id_lang']);
+            $fields['video'][$lang['id_lang']] = Tools::getValue('video_' . (int) $lang['id_lang']);
+            $fields['video_mobile'][$lang['id_lang']] = Tools::getValue('video_mobile_' . (int) $lang['id_lang']);
             $fields['title'][$lang['id_lang']] = Tools::getValue('title_'.(int)$lang['id_lang'], (!empty($slide->title[$lang['id_lang']]) ? $slide->title[$lang['id_lang']] : ''));
             $fields['url'][$lang['id_lang']] = Tools::getValue('url_'.(int)$lang['id_lang'], (!empty($slide->url[$lang['id_lang']]) ? $slide->url[$lang['id_lang']] : ''));
             $fields['legend'][$lang['id_lang']] = Tools::getValue('legend_'.(int)$lang['id_lang'], (!empty($slide->legend[$lang['id_lang']]) ? $slide->legend[$lang['id_lang']] : ''));

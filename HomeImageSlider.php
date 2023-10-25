@@ -31,7 +31,9 @@ class HomeImageSlider extends ObjectModel
 	public $url;
 	public $legend;
 	public $image;
+	public $video;
 	public $image_mobile;
+	public $video_mobile;
 	public $active;
 	public $position;
 	public $id_shop;
@@ -54,6 +56,8 @@ class HomeImageSlider extends ObjectModel
 			'url' =>						array('type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isUrl', 'required' => true, 'size' => 255),
 			'image' =>					array('type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isCleanHtml', 'size' => 255),
 			'image_mobile' =>		array('type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isCleanHtml', 'size' => 255),
+			'video' => 				array('type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isCleanHtml', 'size' => 255),
+			'video_mobile' => 		array('type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isCleanHtml', 'size' => 255),
 			'date_start' => 		array('type' => self::TYPE_DATE),
 			'date_end' => 			array('type' => self::TYPE_DATE),
 		)
@@ -96,6 +100,20 @@ class HomeImageSlider extends ObjectModel
 				if ($image && file_exists(dirname(__FILE__).'/images/'.$image))
 					$res &= @unlink(dirname(__FILE__).'/images/'.$image);
 		}
+
+		$videos = $this->video;
+        foreach ($videos as $video) {
+            if ($video && file_exists(__DIR__ . '/images/' . $video)) {
+                $res &= @unlink(__DIR__ . '/images/' . $video);
+            }
+        }
+
+		$videos = $this->video_mobile;
+        foreach ($videos as $video) {
+            if ($video && file_exists(__DIR__ . '/images/' . $video)) {
+                $res &= @unlink(__DIR__ . '/images/' . $video);
+            }
+        }
 
 		$res &= $this->reOrderPositions();
 
