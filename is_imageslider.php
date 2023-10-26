@@ -53,7 +53,7 @@ class Is_ImageSlider extends Module implements WidgetInterface
     {
         $this->name = 'is_imageslider';
         $this->tab = 'front_office_features';
-        $this->version = '1.3.0';
+        $this->version = '1.3.1';
         $this->author = 'Prestashop - modified by Igor Stępień and Emmanuel Pelletier';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -618,7 +618,10 @@ class Is_ImageSlider extends Module implements WidgetInterface
         if (is_array($slides)) {
             foreach ($slides as &$slide) {
                 $image = $isMobile ? $slide['image_mobile'] : $slide['image'];
-                $slide['sizes'] = @getimagesize((__DIR__ . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . $image));
+                $slide['sizes'] = @getimagesize((__DIR__ . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . $slide['image']));
+                if (!empty($slide['image_mobile'])) {
+                    $slide['sizes_mobile'] = @getimagesize((__DIR__ . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . $slide['image_mobile']));
+                }
 
                 if (isset($slide['sizes'][3]) && $slide['sizes'][3]) {
                     $slide['size'] = $slide['sizes'][3];
