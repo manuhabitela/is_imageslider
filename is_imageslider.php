@@ -601,7 +601,7 @@ class Is_ImageSlider extends Module implements WidgetInterface
 
     public function renderWidget($hookName = null, array $configuration = [])
     {
-        $cacheKey = $this->getCacheId() . '_' . ($this->context->isMobile() ? 'mobile' : 'desktop');
+        $cacheKey = $this->getCacheId() . '_widget';
 
         if (!$this->isCached($this->templateFile, $cacheKey)) {
             $this->smarty->assign($this->getWidgetVariables($hookName, $configuration));
@@ -613,21 +613,18 @@ class Is_ImageSlider extends Module implements WidgetInterface
     public function getWidgetVariables($hookName = null, array $configuration = [])
     {
         $slides = $this->getSlides(true);
-        $isMobile = $this->context->isMobile();
 
         if (is_array($slides)) {
             foreach ($slides as &$slide) {
-                $image = $isMobile ? $slide['image_mobile'] : $slide['image'];
                 $slide['sizes'] = @getimagesize((__DIR__ . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . $slide['image']));
                 if (!empty($slide['image_mobile'])) {
                     $slide['sizes_mobile'] = @getimagesize((__DIR__ . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . $slide['image_mobile']));
                 }
-
                 if (isset($slide['sizes'][3]) && $slide['sizes'][3]) {
                     $slide['size'] = $slide['sizes'][3];
                 }
-
-                $slide['image_url'] = $this->context->link->getMediaLink(_MODULE_DIR_ . 'is_imageslider/images/' . $image);
+                $slide['image_url'] = $this->context->link->getMediaLink(_MODULE_DIR_ . 'is_imageslider/images/' . $slide['image']);
+                $slide['image_mobile_url'] = $this->context->link->getMediaLink(_MODULE_DIR_ . 'is_imageslider/images/' . $slide['image_mobile']);
             }
         }
 
